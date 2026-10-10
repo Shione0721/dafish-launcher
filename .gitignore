@@ -1,0 +1,13 @@
+# 运行时产物
+logs/
+last-report.json
+
+# 开发期截图（README 用的两张已挑进 docs/）
+shots/
+
+# 本机个人备份（开机自启快捷方式等）
+*.lnk
+*.vbs
+
+# Python 缓存
+__pycache__/
