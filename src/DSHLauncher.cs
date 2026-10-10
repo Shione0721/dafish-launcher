@@ -1000,7 +1000,7 @@ namespace DSHLauncher
         private bool checking;
         private bool voiceBusy;
         private RoundButton voiceBtn;
-        private int voiceCheckTick;
+        private int voiceCheckTick = 10;   // 初值即满：启动后第一次 tick 就刷新一次按钮状态
         private int pluginPending = -1;
         private int updateStage;
         private bool quickMode;
