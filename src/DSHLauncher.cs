@@ -669,17 +669,83 @@ namespace DSHLauncher
                 string exp = Path.Combine(root, "new");
                 if (File.Exists(zip)) File.Delete(zip);
                 if (Directory.Exists(exp)) Directory.Delete(exp, true);
-                using (WebClient wc = Client()) wc.DownloadFile(zipUrl, zip);
+                DownloadWithRetry(zipUrl, zip);
                 Directory.CreateDirectory(exp);
                 System.IO.Compression.ZipFile.ExtractToDirectory(zip, exp);
-                string[] subs = Directory.GetDirectories(exp);
-                return subs.Length == 1 ? subs[0] : exp;
+                return FindPackageRoot(exp);
             }
             catch (Exception ex) { err = ex.Message; return ""; }
         }
 
         // 生成换包批处理并启动；本进程随后退出，由批处理覆盖文件并重启
+        // 下载失败自动重试；第二次尝试绕开系统代理直连，处理代理抖动
+        private static void DownloadWithRetry(string url, string file)
+        {
+            Exception last = null;
+            for (int i = 0; i < 3; i++)
+            {
+                try
+                {
+                    using (WebClient wc = Client())
+                    {
+                        if (i == 1) wc.Proxy = null;
+                        wc.DownloadFile(url, file);
+                    }
+                    return;
+                }
+                catch (Exception ex)
+                {
+                    last = ex;
+                    if (i < 2) System.Threading.Thread.Sleep(1500);
+                }
+            }
+            throw last;
+        }
+
+        // zip 里可能多套一层目录，向下找出真正含 DSH.exe 的那层
+        private static string FindPackageRoot(string dir)
+        {
+            if (File.Exists(Path.Combine(dir, "DSH.exe"))) return dir;
+            string[] subs;
+            try { subs = Directory.GetDirectories(dir); } catch { return null; }
+            for (int i = 0; i < subs.Length; i++)
+            {
+                string r = FindPackageRoot(subs[i]);
+                if (r != null) return r;
+            }
+            return null;
+        }
+
+        // 换包：先把旧 exe 改名（Windows 允许重命名正在运行的程序），再复制新文件并重启
         internal static void Swap(string newRoot, string appDir)
+        {
+            string dst = Path.Combine(appDir, "DSH.exe");
+            string old = Path.Combine(appDir, "DSH.exe.old");
+            try { if (File.Exists(old)) File.Delete(old); } catch { }
+            try { if (File.Exists(dst)) File.Move(dst, old); } catch { }
+            try
+            {
+                foreach (string f in Directory.GetFiles(newRoot))
+                {
+                    string name = Path.GetFileName(f);
+                    if (string.Equals(name, "launcher.ini", StringComparison.OrdinalIgnoreCase)) continue;
+                    try { File.Copy(f, Path.Combine(appDir, name), true); } catch { }
+                }
+            }
+            catch { }
+            try
+            {
+                ProcessStartInfo psi = new ProcessStartInfo(dst);
+                psi.UseShellExecute = true;
+                psi.WorkingDirectory = appDir;
+                Process.Start(psi);
+            }
+            catch { }
+            try { File.Delete(old); } catch { }
+        }
+
+        // 旧的批处理换包实现（保留备用，当前不再调用）
+        internal static void SwapLegacy(string newRoot, string appDir)
         {
             string bat = Path.Combine(TempRoot(), "apply-update.cmd");
             string[] lines = {
