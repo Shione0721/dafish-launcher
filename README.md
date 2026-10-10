@@ -2,8 +2,16 @@
 
 复刻「启动画面 + 运行状态窗」的桌面启动器，单文件、零依赖、可整目录删除。
 
+## 下载
+
+- **一键包（推荐）**：[dafish-launcher-v0.3.zip](https://github.com/Shione0721/dafish-launcher/releases/latest/download/dafish-launcher-v0.3.zip) —— 解压到任意固定文件夹，双击 `DSH.exe` 就能用
+- 全部版本：[Releases 页面](https://github.com/Shione0721/dafish-launcher/releases)
+- 懒得解压：直接下仓库里的 [`DSH.exe`](DSH.exe) 单文件也行
+
+> 发布包里的 `launcher.ini` 已去掉本机路径（`exe=` 留空 = 自动探测 DSH 安装位置），换台电脑直接可用。
+
 ## 使用
-- 桌面「大肥鱼」快捷方式双击即可。
+- 双击 `DSH.exe` 即可（也可以自己建桌面快捷方式）。
 - 若 DSH 已在运行 → 直接弹出「大肥鱼 正在运行」窗口（端口 / PID / 已运行时长 + 两行五个按钮）。
 - 若 DSH 未运行 → 先显示「正在启动大肥鱼」进度窗，服务就绪后自动切到运行状态窗。
 

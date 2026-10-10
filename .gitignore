@@ -2,6 +2,9 @@
 logs/
 last-report.json
 
+# 发布包与打包暂存
+dist/
+
 # 开发期截图（README 用的两张已挑进 docs/）
 shots/
 
