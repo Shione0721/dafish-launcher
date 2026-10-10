@@ -39,6 +39,11 @@
 - 构建产物 `DSH.exe` 已经随仓库提供，只想用的话直接下载这个文件即可。
 
 ## 截图
-![启动画面](docs/01-launcher-splash.png)
 
-![运行状态窗](docs/02-launcher-running.png)
+运行状态窗（v0.3 实机截图：鲸鱼娘立绘头像、端口 / PID / 已运行时长、右上角状态灯、两行五个按钮）：
+
+![运行状态窗](docs/01-launcher-running.png)
+
+标题下那句寄语**每次打开都不一样**（100 条随机、连续两次必不重样）；按钮是开关式的——DSH 窗口收起来了，第一个按钮就显示「打开界面」：
+
+![每次打开换一句寄语](docs/02-launcher-random-greeting.png)
