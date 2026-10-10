@@ -1,10 +1,10 @@
-# 大肥鱼启动器 v0.3
+# 大肥鱼启动器 v0.4
 
 复刻「启动画面 + 运行状态窗」的桌面启动器，单文件、零依赖、可整目录删除。
 
 ## 下载
 
-- **一键包（推荐）**：[dafish-launcher-v0.3.zip](https://github.com/Shione0721/dafish-launcher/releases/latest/download/dafish-launcher-v0.3.zip) —— 解压到任意固定文件夹，双击 `DSH.exe` 就能用
+- **一键包（推荐）**：[dafish-launcher-v0.4.zip](https://github.com/Shione0721/dafish-launcher/releases/latest/download/dafish-launcher-v0.4.zip) —— 解压到任意固定文件夹，双击 `DSH.exe` 就能用
 - 全部版本：[Releases 页面](https://github.com/Shione0721/dafish-launcher/releases)
 - 懒得解压：直接下仓库里的 [`DSH.exe`](DSH.exe) 单文件也行
 
@@ -12,13 +12,18 @@
 
 ## 使用
 - 双击 `DSH.exe` 即可（也可以自己建桌面快捷方式）。
-- 若 DSH 已在运行 → 直接弹出「大肥鱼 正在运行」窗口（端口 / PID / 已运行时长 + 两行五个按钮）。
+- 若 DSH 已在运行 → 直接弹出「大肥鱼 正在运行」窗口（端口 / PID / 已运行时长 + 两行六个按钮）。
 - 若 DSH 未运行 → 先显示「正在启动大肥鱼」进度窗，服务就绪后自动切到运行状态窗。
+
+## v0.4 更新（2026-10-10）
+- 新增 **「检查启动器」按钮**：点一下查 GitHub 上有没有新版本，没有就什么都不变；有的话按钮变成「更新到 vX.Y」，**再点一下自动下载新版本、替换文件、重启自己**（和「检查插件」一样的两段式）
+- 换包时 **`launcher.ini` 不会被覆盖**，你自己的配置原样留着
+- 副产物：仓库里现在能自查版本了，不用来回翻 Releases 页面
 
 ## v0.3 更新（2026-10-10）
 - 标题下方新增 **100 条随机寄语**：每次打开都换一句，连续两次必不重样（GUID 种子 + 记住上次索引）
 - 左上角大头像换成**完整的鲸鱼娘立绘**（头顶小鲸鱼 + 头饰 + 脸）
-- **五个按钮各有专属小头像**，色调一眼可辨
+- **每个按钮各有专属小头像**，色调一眼可辨
 - 按钮改**两行布局**：上行 打开界面 / 检查插件 / 检查本体，下行 启动语音 / 关闭
 - 「打开界面」变**开关**：DSH 窗口可见时显示「关闭界面」（发 WM_CLOSE 收进托盘，不杀进程）
 - 「检查插件」变**两段式**：先查（显示可更新数量）→ 再点才真的执行更新
@@ -26,12 +31,12 @@
 - 白色元素点缀（白+金混色星星、白色虚线光环、内侧白细线）+ 金色描边加宽到 3.4
 
 ## 文件
-- `DSH.exe`          启动器本体（约 465 KB，内含头像资源与图标）
+- `DSH.exe`          启动器本体（约 522 KB，内含头像资源与图标）
 - `launcher.ini`     配置 exe 路径与端口（删除后自动探测）
 - `updater.mjs`      插件 / 本体更新用的 Node 脚本
 - `使用说明.txt`     面向使用者的说明
 - `src/DSHLauncher.cs`  源码
-- `build/`           头像素材与生成脚本（`_make_avatars4.py`、`_make_avatar_full.py`、`AVATARS.md`）
+- `build/`           头像素材与生成脚本（`_make_avatars4.py`、`_make_avatars5.py`、`_make_avatar_full.py`、`AVATARS.md`）
 - `build.ps1`        重新编译脚本（csc v4.0.30319；⚠️ 编译前先关掉正在运行的 DSH.exe，否则报 CS0016）
 - `app.manifest`     内嵌 asInvoker 清单（免 UAC）
 
@@ -48,7 +53,7 @@
 
 ## 截图
 
-运行状态窗（v0.3 实机截图：鲸鱼娘立绘头像、端口 / PID / 已运行时长、右上角状态灯、两行五个按钮）：
+运行状态窗（v0.4 实机截图：鲸鱼娘立绘头像、端口 / PID / 已运行时长、右上角状态灯、两行六个按钮）：
 
 ![运行状态窗](docs/01-launcher-running.png)
 

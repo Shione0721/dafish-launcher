@@ -16,7 +16,9 @@ $args0 = @(
   "/resource:$root\build\av_check.png,av_check.png",
   "/resource:$root\build\av_voice.png,av_voice.png",
   "/resource:$root\build\av_close.png,av_close.png",
+  "/resource:$root\build\av_version.png,av_version.png",
   "/reference:System.dll","/reference:System.Drawing.dll","/reference:System.Windows.Forms.dll",
+  "/reference:System.IO.Compression.dll","/reference:System.IO.Compression.FileSystem.dll",
   "$root\src\DSHLauncher.cs"
 )
 $ico = Join-Path $root "build\whale-dsh.ico"

@@ -140,12 +140,12 @@ namespace DSHLauncher
 
     internal static class Avatar
     {
-        // 0=左上角大头像；1..5=五个按钮各自的专属头像（风格各异）
+        // 0=左上角大头像；1..6=六个按钮各自的专属头像（风格各异）
         private static readonly string[] Res = {
-            "WhaleAvatar.png", "av_open.png", "av_update.png", "av_check.png", "av_voice.png", "av_close.png"
+            "WhaleAvatar.png", "av_open.png", "av_update.png", "av_check.png", "av_voice.png", "av_close.png", "av_version.png"
         };
-        private static readonly Image[] cache = new Image[6];
-        private static readonly bool[] tried = new bool[6];
+        private static readonly Image[] cache = new Image[7];
+        private static readonly bool[] tried = new bool[7];
 
         internal static Image Get() { return Get(0); }
 
@@ -592,6 +592,112 @@ namespace DSHLauncher
         }
     }
 
+    // ---------------- 检查启动器自身版本 ----------------
+    internal static class AppUpdate
+    {
+        internal const string Version = "v0.4";
+        internal const string Repo = "Shione0721/dafish-launcher";
+        private const string Api = "https://api.github.com/repos/" + Repo + "/releases/latest";
+
+        private static WebClient Client()
+        {
+            try { ServicePointManager.SecurityProtocol = (SecurityProtocolType)3072; } catch { }
+            WebClient wc = new WebClient();
+            wc.Encoding = System.Text.Encoding.UTF8;
+            wc.Headers.Add("User-Agent", "dafish-launcher/" + Version);
+            return wc;
+        }
+
+        // 查线上最新 Release 的 tag 与 zip 资产直链
+        internal static bool Check(out string tag, out string zip, out string err)
+        {
+            tag = ""; zip = ""; err = "";
+            try
+            {
+                using (WebClient wc = Client())
+                {
+                    string json = wc.DownloadString(Api);
+                    Match mt = Regex.Match(json, "\"tag_name\"\\s*:\\s*\"([^\"]+)\"");
+                    if (!mt.Success) { err = "解析版本号失败"; return false; }
+                    tag = mt.Groups[1].Value.Trim();
+                    Match mz = Regex.Match(json, "\"browser_download_url\"\\s*:\\s*\"([^\"]+\\.zip)\"");
+                    if (mz.Success) zip = mz.Groups[1].Value;
+                }
+                return true;
+            }
+            catch (Exception ex) { err = ex.Message; return false; }
+        }
+
+        private static int[] Nums(string v)
+        {
+            string s = (v == null ? "" : v).Trim().TrimStart('v', 'V');
+            string[] p = s.Split('.');
+            int[] r = new int[p.Length];
+            for (int i = 0; i < p.Length; i++) { int n = 0; int.TryParse(p[i], out n); r[i] = n; }
+            return r;
+        }
+
+        // latest 比当前新 → true
+        internal static bool IsNewer(string latest, string cur)
+        {
+            int[] a = Nums(latest), b = Nums(cur);
+            int len = Math.Max(a.Length, b.Length);
+            for (int i = 0; i < len; i++)
+            {
+                int x = i < a.Length ? a[i] : 0;
+                int y = i < b.Length ? b[i] : 0;
+                if (x != y) return x > y;
+            }
+            return false;
+        }
+
+        private static string TempRoot()
+        {
+            string d = Path.Combine(Path.GetTempPath(), "dafish-launcher-update");
+            if (!Directory.Exists(d)) Directory.CreateDirectory(d);
+            return d;
+        }
+
+        // 下载 zip 并解压，返回解压出来的包根目录
+        internal static string Fetch(string zipUrl, out string err)
+        {
+            err = "";
+            try
+            {
+                string root = TempRoot();
+                string zip = Path.Combine(root, "pkg.zip");
+                string exp = Path.Combine(root, "new");
+                if (File.Exists(zip)) File.Delete(zip);
+                if (Directory.Exists(exp)) Directory.Delete(exp, true);
+                using (WebClient wc = Client()) wc.DownloadFile(zipUrl, zip);
+                Directory.CreateDirectory(exp);
+                System.IO.Compression.ZipFile.ExtractToDirectory(zip, exp);
+                string[] subs = Directory.GetDirectories(exp);
+                return subs.Length == 1 ? subs[0] : exp;
+            }
+            catch (Exception ex) { err = ex.Message; return ""; }
+        }
+
+        // 生成换包批处理并启动；本进程随后退出，由批处理覆盖文件并重启
+        internal static void Swap(string newRoot, string appDir)
+        {
+            string bat = Path.Combine(TempRoot(), "apply-update.cmd");
+            string[] lines = {
+                "@echo off",
+                "ping 127.0.0.1 -n 3 >nul",
+                "for %%F in (\"" + newRoot + "\\*.*\") do if /I not \"%%~nxF\"==\"launcher.ini\" copy /y \"%%~fF\" \"" + appDir + "\\%%~nxF\" >nul",
+                "start \"\" \"" + Path.Combine(appDir, "DSH.exe") + "\"",
+                "del \"%~f0\""
+            };
+            File.WriteAllText(bat, string.Join("\r\n", lines) + "\r\n", System.Text.Encoding.Default);
+            ProcessStartInfo psi = new ProcessStartInfo("cmd.exe", "/c \"" + bat + "\"");
+            psi.UseShellExecute = false;
+            psi.CreateNoWindow = true;
+            psi.WindowStyle = ProcessWindowStyle.Hidden;
+            Process.Start(psi);
+        }
+    }
+
     internal class RoundButton : Control
     {
         private bool hover;
@@ -898,7 +1004,9 @@ namespace DSHLauncher
         private int pluginPending = -1;
         private int updateStage;
         private bool quickMode;
-        private RoundButton openBtn, updateBtn;
+        private RoundButton openBtn, updateBtn, versionBtn;
+        private bool appChecking, appUpdating, appHasUpdate;
+        private string appLatest = "", appZipUrl = "";
 
         internal LauncherForm(bool alreadyRunning)
         {
@@ -921,11 +1029,15 @@ namespace DSHLauncher
             checkBtn.AvatarIndex = 3;
             checkBtn.Click += OnCheckUpdate;
 
-            voiceBtn = MakeButton("启动语音", 108, 164, 152, 46, false);
+            voiceBtn = MakeButton("启动语音", 24, 164, 152, 46, false);
             voiceBtn.AvatarIndex = 4;
             voiceBtn.Click += OnVoice;
 
-            RoundButton closeBtn = MakeButton("关闭", 276, 164, 152, 46, false);
+            versionBtn = MakeButton("检查启动器", 192, 164, 152, 46, false);
+            versionBtn.AvatarIndex = 6;
+            versionBtn.Click += OnAppVersion;
+
+            RoundButton closeBtn = MakeButton("关闭", 360, 164, 152, 46, false);
             closeBtn.AvatarIndex = 5;
             closeBtn.Click += delegate { Close(); };
 
@@ -1053,6 +1165,89 @@ namespace DSHLauncher
                         checking = false;
                         footMsg = r;
                         Invalidate();
+                    });
+                }
+                catch { }
+            });
+        }
+
+        // 检查启动器自身版本：没有更新按钮文字不变，有更新则两段式（再点一下执行）
+        private void OnAppVersion(object sender, EventArgs e)
+        {
+            if (appChecking || appUpdating || updateRunning) return;
+            if (appHasUpdate) { StartAppUpdate(); return; }
+            appChecking = true;
+            versionBtn.Text = "检查中...";
+            versionBtn.Invalidate();
+            footMsg = "正在检查启动器版本...";
+            Invalidate();
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                string tag, zip, err;
+                bool ok = AppUpdate.Check(out tag, out zip, out err);
+                try
+                {
+                    BeginInvoke((MethodInvoker)delegate
+                    {
+                        appChecking = false;
+                        if (!ok)
+                        {
+                            versionBtn.Text = "检查启动器";
+                            footMsg = "启动器检查失败：" + err;
+                        }
+                        else if (AppUpdate.IsNewer(tag, AppUpdate.Version))
+                        {
+                            appHasUpdate = true;
+                            appLatest = tag;
+                            appZipUrl = zip;
+                            versionBtn.Text = "更新到 " + tag;
+                            footMsg = "【启动器】有新版本 " + tag + "（当前 " + AppUpdate.Version + "）—— 再点一下开始更新";
+                        }
+                        else
+                        {
+                            versionBtn.Text = "检查启动器";
+                            footMsg = "【启动器】已是最新（" + AppUpdate.Version + "）";
+                        }
+                        versionBtn.Invalidate();
+                        Invalidate();
+                    });
+                }
+                catch { }
+            });
+        }
+
+        // 第二段：下载新包 → 换文件 → 重启自己
+        private void StartAppUpdate()
+        {
+            if (appUpdating) return;
+            if (appZipUrl.Length == 0) { footMsg = "没拿到下载地址，稍后再试"; Invalidate(); return; }
+            appUpdating = true;
+            versionBtn.Text = "下载中...";
+            versionBtn.Invalidate();
+            footMsg = "正在下载 " + appLatest + " ...";
+            Invalidate();
+            ThreadPool.QueueUserWorkItem(delegate
+            {
+                string err;
+                string newRoot = AppUpdate.Fetch(appZipUrl, out err);
+                try
+                {
+                    BeginInvoke((MethodInvoker)delegate
+                    {
+                        if (newRoot.Length == 0)
+                        {
+                            appUpdating = false;
+                            versionBtn.Text = "更新到 " + appLatest;
+                            versionBtn.Invalidate();
+                            footMsg = "下载失败：" + err;
+                            Invalidate();
+                            return;
+                        }
+                        footMsg = "正在重启到 " + appLatest + " ...";
+                        Invalidate();
+                        try { AppUpdate.Swap(newRoot, Path.GetDirectoryName(Application.ExecutablePath)); }
+                        catch (Exception ex) { footMsg = "换包失败：" + ex.Message; Invalidate(); return; }
+                        Close();
                     });
                 }
                 catch { }
